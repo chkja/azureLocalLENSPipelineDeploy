@@ -47,6 +47,14 @@ parameters:
 trigger: none
 pr: none
 
+schedules:
+- cron: "0 0 * * *"
+  displayName: Daily workbook sync
+  branches:
+    include:
+    - main
+  always: true
+
 stages:
 - stage: Deploy
   displayName: Fetch/cache and deploy Azure Local LENS workbook

@@ -44,7 +44,7 @@ Automation scripts and an Azure DevOps pipeline for fetching, caching, and deplo
 
 ## Azure DevOps pipeline
 
-Import `pipeline/DeployAzureLocalLENSWorkbook.yml` into your Azure DevOps project as a pipeline. The pipeline is **manually triggered** (`trigger: none`).
+Import `pipeline/DeployAzureLocalLENSWorkbook.yml` into your Azure DevOps project as a pipeline. The pipeline is **manually triggered** (`trigger: none`) and also runs on a daily schedule.
 
 ### Parameters
 
