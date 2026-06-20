@@ -1,0 +1,88 @@
+parameters:
+- name: subscriptionId
+  displayName: Subscription ID (must match Azure DevOps service connection name)
+  type: string
+  default: 00000000-0000-0000-0000-000000000000
+- name: resourceGroupName
+  displayName: Resource group for workbook deployment
+  type: string
+  default: rg-monitoring-shared
+- name: location
+  displayName: Azure location
+  type: string
+  default: westeurope
+- name: workbookDisplayName
+  displayName: Workbook display name
+  type: string
+  default: Azure Local LENS Workbook
+- name: workbookResourceName
+  displayName: Workbook resource name (Azure resource name)
+  type: string
+  default: azure-local-lens-workbook
+- name: capacityWorkbookResourceName
+  displayName: Capacity child workbook resource name (leave empty to disable split deployment)
+  type: string
+  default: azure-local-lens-workbook-capacity
+- name: cachePath
+  displayName: Cached workbook path in this repository
+  type: string
+  default: scripts/cache/AzureLocal-LENS-Workbook/AzureLocal-LENS-Workbook.json
+- name: githubWorkbookUrl
+  displayName: Azure Local LENS workbook JSON URL
+  type: string
+  default: https://raw.githubusercontent.com/Azure/AzureLocal-LENS-Workbook/main/AzureLocal-LENS-Workbook.json
+- name: createCacheUpdatePullRequest
+  displayName: Create/update PR when cache changes
+  type: boolean
+  default: true
+- name: cacheUpdateBranch
+  displayName: Branch name used for cache update PR
+  type: string
+  default: autoupdate/azurelocal-lens-workbook-cache
+- name: cacheUpdateTargetBranch
+  displayName: Target branch for cache update PR
+  type: string
+  default: main
+
+trigger: none
+pr: none
+
+stages:
+- stage: Deploy
+  displayName: Fetch/cache and deploy Azure Local LENS workbook
+  jobs:
+  - job: FetchCacheAndDeploy
+    displayName: Fetch from GitHub, maintain cache, and deploy
+    timeoutInMinutes: 60
+    pool:
+      vmImage: windows-latest
+    steps:
+    - checkout: self
+      persistCredentials: true
+      fetchDepth: 0
+    - task: PowerShell@2
+      displayName: Fetch workbook and create cache update PR
+      env:
+        SYSTEM_ACCESSTOKEN: $(System.AccessToken)
+      inputs:
+        pwsh: true
+        targetType: filePath
+        filePath: $(Build.SourcesDirectory)/scripts/FetchCacheAndUpdateAzureLocalLENSWorkbook.ps1
+        arguments: -CachePath "${{ parameters.cachePath }}" -GitHubWorkbookUrl "${{ parameters.githubWorkbookUrl }}" -CreateCacheUpdatePullRequest $${{ parameters.createCacheUpdatePullRequest }} -CacheUpdateBranch "${{ parameters.cacheUpdateBranch }}" -CacheUpdateTargetBranch "${{ parameters.cacheUpdateTargetBranch }}"
+
+    - task: AzureCLI@2
+      displayName: Deploy Azure Local LENS workbook
+      inputs:
+        azureSubscription: '${{ parameters.subscriptionId }}'
+        scriptType: pscore
+        scriptLocation: scriptPath
+        scriptPath: scripts/DeployAzureLocalLENSWorkbook.ps1
+        arguments: >
+          -SubscriptionId "${{ parameters.subscriptionId }}"
+          -ResourceGroupName "${{ parameters.resourceGroupName }}"
+          -Location "${{ parameters.location }}"
+          -WorkbookDisplayName "${{ parameters.workbookDisplayName }}"
+          -WorkbookResourceName "${{ parameters.workbookResourceName }}"
+          -WorkbookJsonPath "$(LENS_WORKBOOK_PATH)"
+          -CapacityWorkbookResourceName "${{ parameters.capacityWorkbookResourceName }}"
+        powerShellErrorActionPreference: stop
